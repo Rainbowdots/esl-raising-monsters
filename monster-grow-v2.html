@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>小怪獸養成 Monster Grow</title>
+<style>
+  :root{
+    --bg:#FFF6E9;
+    --ink:#2B2B2B;
+    --card:#FFFFFF;
+    --coral:#FF6B4A;
+    --teal:#2BB3A3;
+    --purple:#8B5CF6;
+    --yellow:#FFC93C;
+    --line:#2B2B2B;
+    --shadow: 0 6px 0 rgba(43,43,43,0.15);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    color:var(--ink);
+    overflow:hidden;
+    touch-action: manipulation;
+  }
+  #app{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column;
+    width:100%; height:100%;
+  }
+  .screen{
+    display:none;
+    flex:1;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding: 14px 16px 20px;
+    overflow-y:auto;
+    width:100%;
+  }
+  .screen.active{ display:flex; }
+
+  .topbar{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding: 6px 0 10px;
+    flex-shrink:0;
+  }
+  .topbar .logo{
+    font-weight:800;
+    font-size: clamp(16px, 3.2vw, 20px);
+    letter-spacing: 0.5px;
+  }
+  .topbar .logo .small{
+    font-weight:600;
+    font-size: 0.7em;
+    color:#6E6E6E;
+    margin-left:6px;
+  }
+
+  h1,h2,h3{ margin: 6px 0; text-align:center; }
+  h1{ font-size: clamp(20px, 4.5vw, 30px); }
+  h2{ font-size: clamp(17px, 3.6vw, 22px); }
+  p{ text-align:center; line-height:1.5; }
+
+  .btn{
+    appearance:none; border:3px solid var(--line);
+    background: var(--yellow);
+    color: var(--ink);
+    font-weight:800;
+    font-size: clamp(15px, 3vw, 18px);
+    padding: 12px 26px;
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    cursor:pointer;
+    touch-action: manipulation;
+    transition: transform .08s ease;
+    min-height:48px;
+  }
+  .btn:active{ transform: translateY(4px); box-shadow:none; }
+  .btn.secondary{ background:var(--card); }
+  .btn.coral{ background:var(--coral); color:#fff; }
+  .btn.teal{ background:var(--teal); color:#fff; }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  input[type=text]{
+    width:100%;
+    max-width:360px;
+    border:3px solid var(--line);
+    border-radius:16px;
+    padding: 12px 16px;
+    font-size: clamp(15px, 3.4vw, 18px);
+    background:var(--card);
+    color:var(--ink);
+    outline:none;
+    font-family:inherit;
+  }
+  input[type=text]:focus{ border-color: var(--coral); }
+
+  .field{
+    width:100%;
+    max-width:360px;
+    margin: 10px 0;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .field label{
+    font-weight:700;
+    font-size: clamp(13px, 2.8vw, 15px);
+    padding-left:4px;
+  }
+
+  /* ---------- Egg screen ---------- */
+  .egg-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:16px;
+    justify-content:center;
+    align-items:flex-start;
+    width:100%;
+    max-width:720px;
+    margin-top:10px;
+  }
+  .egg-card{
+    background:var(--card);
+    border:3px solid var(--line);
+    border-radius:22px;
+    box-shadow: var(--shadow);
+    width: clamp(140px, 28vw, 190px);
+    padding:14px 10px 16px;
+    text-align:center;
+    cursor:pointer;
+    transition: transform .08s ease;
+  }
+  .egg-card:active{ transform: translateY(4px); box-shadow:none; }
+  .egg-card svg{ width:72%; height:auto; }
+  .egg-card .hint{
+    font-size: clamp(12px, 2.6vw, 14px);
+    font-weight:700;
+    margin-top:8px;
+    min-height: 2.6em;
+  }
+  .egg-card.chosen{ outline: 5px solid var(--teal); }
+
+  /* ---------- Feed screen ---------- */
+  .feed-wrap{
+    width:100%;
+    max-width:760px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    flex:1;
+  }
+  .progress{
+    display:flex; gap:6px; align-items:center; justify-content:center;
+    margin-bottom:2px;
+    flex-wrap:wrap;
+  }
+  .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:#E7DECB; border:2px solid var(--line);
+  }
+  .dot.done{ background:var(--teal); }
+  .dot.now{ background:var(--coral); }
+
+  .stage{
+    position:relative;
+    width:100%;
+    max-width: 320px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+  }
+  .monster-box{
+    width: min(46vw, 230px);
+    height: min(46vw, 230px);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .monster-box svg{
+    width:100%; height:100%;
+    display:block;
+    animation: breathe 3.4s ease-in-out infinite;
+    transform-origin:center;
+  }
+  @keyframes breathe{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.035); }
+  }
+  .monster-box.pop{ animation: popGrow .5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes popGrow{
+    0%{ transform:scale(0.8); }
+    55%{ transform:scale(1.12); }
+    100%{ transform:scale(1); }
+  }
+  .twin-box{ display:flex; gap:6px; align-items:center; justify-content:center; }
+  .twin-box .monster-box{ width: min(28vw, 140px); height: min(28vw, 140px); }
+
+  /* idle head tilt, lives on an inner <g> with no inline SVG transform attr
+     so the CSS animation doesn't collide with the positioning transform */
+  .tilt{
+    animation: tiltCycle 8s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin:center;
+  }
+  @keyframes tiltCycle{
+    0%,86%{ transform:rotate(0deg); }
+    90%{ transform:rotate(-6deg); }
+    95%{ transform:rotate(4deg); }
+    100%{ transform:rotate(0deg); }
+  }
+
+  /* blink: an eyelid shape sits over each eye, hidden by default */
+  .eyelid{
+    transform: scaleY(0);
+    transform-box: fill-box;
+    transform-origin:center;
+  }
+  .eyelid.blink{ animation: blinkOnce 260ms ease-in-out; }
+  @keyframes blinkOnce{
+    0%{ transform:scaleY(0); }
+    45%{ transform:scaleY(1); }
+    100%{ transform:scaleY(0); }
+  }
+
+  .bubble{
+    position:absolute;
+    top:-6px;
+    left:50%;
+    transform:translate(-50%,-100%) scale(0.85);
+    background:#fff;
+    border:3px solid var(--line);
+    border-radius:16px;
+    padding:6px 14px;
+    font-weight:800;
+    font-size: clamp(13px, 3vw, 16px);
+    white-space:nowrap;
+    opacity:0;
+    transition: opacity .18s ease, transform .18s ease;
+    pointer-events:none;
+  }
+  .bubble.show{ opacity:1; transform:translate(-50%,-115%) scale(1); }
+
+  /* ---------- Order panel (what the monster wants) ---------- */
+  .order-panel{
+    width:100%;
+    max-width:300px;
+    margin: 0 auto 2px;
+    background:#FFF4D6;
+    border:3px solid var(--line);
+    border-radius:16px;
+    padding:8px 12px;
+    font-weight:700;
+    font-size: clamp(13px, 3vw, 15.5px);
+    text-align:center;
+    line-height:1.6;
+  }
+  .order-panel ruby{ ruby-position: over; color:#C8450A; }
+  .order-panel rt{
+    font-size: 0.55em;
+    color:#C8450A;
+    font-weight:800;
+  }
+
+  .plate{
+    width: min(52vw, 215px);
+    height: min(27vw, 112px);
+    border-radius: 50%;
+    border: 4px solid var(--line);
+    background: linear-gradient(180deg, #FFFDF9 0%, #FFF2DC 100%);
+    box-shadow: inset 0 -6px 0 rgba(43,43,43,0.07), 0 5px 0 rgba(43,43,43,0.12);
+    display:flex; align-items:center; justify-content:center;
+    text-align:center;
+    padding: 8px 14px;
+    margin-top:6px;
+    position:relative;
+    transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .plate::after{
+    content:"";
+    position:absolute;
+    inset: 16%;
+    border: 3px solid rgba(43,43,43,0.16);
+    border-radius: 50%;
+    pointer-events:none;
+  }
+  .plate .plate-hint{
+    font-size: clamp(11px, 2.4vw, 13px);
+    color:#9C8E6B;
+    font-weight:700;
+    line-height:1.3;
+    position:relative;
+    z-index:1;
+  }
+  .plate.plate-hover{
+    background: linear-gradient(180deg, #FFF9EC 0%, #FFE3B0 100%);
+    box-shadow: 0 0 0 6px rgba(255,201,60,0.4), inset 0 -6px 0 rgba(43,43,43,0.07);
+    border-color: var(--coral);
+  }
+
+  .cards-row{
+    display:flex;
+    gap:14px;
+    justify-content:center;
+    flex-wrap:wrap;
+    width:100%;
+    margin-top:6px;
+  }
+  .food-card{
+    width: clamp(78px, 21vw, 100px);
+    background:var(--card);
+    border:3px solid var(--line);
+    border-radius:16px;
+    box-shadow: var(--shadow);
+    padding:10px 6px 8px;
+    text-align:center;
+    user-select:none;
+    touch-action:none;
+    cursor:grab;
+  }
+  .food-card .emoji{ font-size: clamp(26px, 7vw, 36px); display:block; }
+  .food-card .word{
+    font-weight:800;
+    font-size: clamp(13px, 3vw, 15px);
+    margin-top:4px;
+    display:block;
+  }
+  .dragging-ghost{ opacity:0.95 !important; }
+
+  .hand-tip{
+    font-size: clamp(11px, 2.4vw, 13px);
+    color:#8A816C;
+    margin-top:2px;
+  }
+
+  /* ---------- Litter overlay ---------- */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(43,43,43,0.55);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index: 500;
+    padding:20px;
+  }
+  .overlay.show{ display:flex; }
+  .overlay-card{
+    background:var(--card);
+    border:3px solid var(--line);
+    border-radius:22px;
+    padding: 24px 22px;
+    text-align:center;
+    max-width:320px;
+    box-shadow: 0 10px 0 rgba(0,0,0,0.2);
+  }
+  .litter-box{
+    position:relative;
+    width:100%;
+    height:150px;
+    background:#E7D9B8;
+    border:3px solid var(--line);
+    border-radius:16px;
+    margin-top:12px;
+    overflow:hidden;
+  }
+  .litter-box::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: radial-gradient(#D8C79E 2px, transparent 2px);
+    background-size: 14px 14px;
+    opacity:0.6;
+  }
+  .poop{
+    position:absolute;
+    line-height:1;
+    cursor:pointer;
+    user-select:none;
+    touch-action: manipulation;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.15));
+  }
+  .poop.gone{
+    animation: poofOut .3s ease forwards;
+    pointer-events:none;
+  }
+  @keyframes poofOut{
+    to{ transform: scale(0) rotate(30deg); opacity:0; }
+  }
+  .litter-timer{
+    margin-top:8px;
+    font-weight:800;
+    font-size:15px;
+    color:#B2461F;
+  }
+
+  /* ---------- Result screen ---------- */
+  .result-wrap{
+    width:100%;
+    max-width: 640px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .order-score{
+    font-weight:800;
+    font-size: clamp(14px, 3vw, 16px);
+    text-align:center;
+  }
+  .word-chip{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    background:#FFE8D6;
+    border:2px solid var(--line);
+    border-radius:12px;
+    padding:5px 10px;
+    margin:3px;
+  }
+  .word-chip .en{ font-weight:800; font-size:14px; }
+  .word-chip .zh{ font-size:11px; color:#6E6E6E; }
+  .chip-wrap{ display:flex; flex-wrap:wrap; justify-content:center; max-width:560px; }
+
+  .forms-wrap{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; max-width:560px; }
+  .form-badge{
+    background:#E4F6F2;
+    border:2px solid var(--line);
+    border-radius:14px;
+    padding:6px 12px;
+    font-size: 13px;
+    font-weight:700;
+  }
+
+  .section-label{
+    font-weight:800;
+    font-size: clamp(14px, 3vw, 16px);
+    margin-top:10px;
+  }
+
+  @media (orientation: landscape){
+    .screen{ padding: 10px 18px; }
+    #feedScreen .feed-wrap{ flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:center; gap:18px; }
+    #feedScreen .stage{ max-width:220px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="logo">🐣 Monster Grow <span class="small">小怪獸養成</span></div>
+  </div>
+
+  <!-- 1. Name screen -->
+  <div id="nameScreen" class="screen">
+    <h1>Let's hatch a monster!<br>一起孵一隻怪獸！</h1>
+    <div class="field">
+      <label for="playerNameInput">Your name 你的名字</label>
+      <input type="text" id="playerNameInput" placeholder="e.g. Ian" maxlength="20">
+    </div>
+    <div class="field">
+      <label for="monsterNameInput">Your monster's name 怪獸的名字</label>
+      <input type="text" id="monsterNameInput" placeholder="e.g. Boba" maxlength="20">
+    </div>
+    <button class="btn coral" id="toEggBtn" style="margin-top:14px;">Next! 下一步 →</button>
+  </div>
+
+  <!-- 2. Egg screen -->
+  <div id="eggScreen" class="screen">
+    <h2>Pick an egg 選一顆蛋</h2>
+    <p class="hand-tip">Read the hint before you choose. 先讀提示再選喔！</p>
+    <div class="egg-grid" id="eggGrid"></div>
+  </div>
+
+  <!-- 3. Feed screen -->
+  <div id="feedScreen" class="screen">
+    <div class="feed-wrap">
+      <div class="stage">
+        <div class="progress" id="progressDots"></div>
+        <div class="order-panel" id="orderBubble"></div>
+        <div id="monsterStage"></div>
+        <div class="plate" id="plateZone"><span class="plate-hint">Drag food here<br>拖食物到這裡</span></div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+        <div class="cards-row" id="cardsRow"></div>
+        <div class="hand-tip">👆 Drag a card into the plate 把一張卡拖進碟子</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Result screen -->
+  <div id="resultScreen" class="screen">
+    <h2 id="resultTitle">My Monster</h2>
+    <div class="result-wrap">
+      <div id="resultMonsterStage"></div>
+      <div class="order-score" id="orderScoreLine"></div>
+      <div class="section-label">Words I fed 餵過的字</div>
+      <div class="chip-wrap" id="wordChips"></div>
+      <div class="section-label">Forms unlocked 解鎖型態</div>
+      <div class="forms-wrap" id="formBadges"></div>
+      <button class="btn teal" id="saveImgBtn" style="margin-top:14px;">💾 Save my monster 存成圖片</button>
+      <button class="btn secondary" id="restartBtn" style="margin-top:6px;">Play again 再玩一次</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Litter box overlay -->
+<div class="overlay" id="litterOverlay">
+  <div class="overlay-card">
+    <h3>Litter box time!<br>清潔時間到了！</h3>
+    <div class="litter-box" id="litterBox"></div>
+    <div class="litter-timer" id="litterTimer" style="display:none;"></div>
+    <div class="hand-tip">👆 Tap each one! 點掉它們！</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ======================= DATA ======================= */
+
+  var EGGS = [
+    { id:'warm',  hint:"This one is warm.",        color:'#FF8A4C', shape:'round'  },
+    { id:'noisy', hint:"This one makes noise.",    color:'#FFD23F', shape:'spiky'  },
+    { id:'heavy', hint:"This one is very heavy.",  color:'#8C97A8', shape:'blocky' }
+  ];
+
+  var FOODS = {
+    hot:    { emoji:'🔥', zh:'熱',   reactions:['Too hot!','Ouch, hot!'] },
+    cold:   { emoji:'❄️', zh:'冷',   reactions:['Brr, cold!','So icy!'] },
+    sweet:  { emoji:'🍯', zh:'甜',   reactions:['Yummy!','So sweet!'] },
+    sour:   { emoji:'🍋', zh:'酸',   reactions:['So sour!','Whoa, sour!'] },
+    big:    { emoji:'🍉', zh:'大',   reactions:['Huge bite!','So big!'] },
+    small:  { emoji:'🫐', zh:'小',   reactions:['Tiny snack!','Just a bite!'] },
+    long:   { emoji:'🥖', zh:'長',   reactions:['So long!','Wow, long!'] },
+    round:  { emoji:'🍡', zh:'圓',   reactions:['Round and fun!','Roll roll!'] },
+    soft:   { emoji:'🧸', zh:'軟',   reactions:['So soft!','Squishy!'] },
+    hard:   { emoji:'🥨', zh:'硬',   reactions:['Too hard!','Crunchy!'] },
+    fast:   { emoji:'⚡', zh:'快',   reactions:['Zoom zoom!','So fast!'] },
+    slow:   { emoji:'🐢', zh:'慢',   reactions:['Slow and steady.','Take it slow.'] },
+    red:    { emoji:'🔴', zh:'紅',   reactions:['I like red!','Red is fun!'] },
+    blue:   { emoji:'🔵', zh:'藍',   reactions:['Blue is cool!','Nice blue!'] },
+    green:  { emoji:'🟢', zh:'綠',   reactions:['Green yum!','Fresh green!'] },
+    sleepy: { emoji:'😴', zh:'想睡', reactions:['So sleepy...','Yawn...'] },
+    angry:  { emoji:'😠', zh:'生氣', reactions:['Grrr!','Hmph!'] },
+    hungry: { emoji:'🍽️', zh:'餓',  reactions:['More please!','Still hungry!'] }
+  };
+  var WORD_LIST = Object.keys(FOODS);
+
+  var LITTER_REACTIONS = ['Thank you!','So clean!','Feels good!'];
+
+  var FORMS_META = {
+    volcano:    { emoji:'🌋', en:'Volcano',      zh:'火山怪' },
+    halfSplit:  { emoji:'🌗', en:'Split Body',   zh:'身體裂成兩半' },
+    slime:      { emoji:'🟪', en:'Slime',        zh:'史萊姆' },
+    wings:      { emoji:'🦋', en:'Winged',       zh:'長翅膀' },
+    twinSplit:  { emoji:'👯', en:'Twin Split',   zh:'撐破變兩隻' },
+    bubbleForm: { emoji:'🫧', en:'Bubble',       zh:'泡泡型態' },
+    spikyHorns: { emoji:'😡', en:'Spiky Horns',  zh:'尖角生氣' },
+    sleepyForm: { emoji:'😴', en:'Sleepy',       zh:'愛睏型態' },
+    rainbow:    { emoji:'🌈', en:'Rainbow',      zh:'彩虹型態' },
+    iceForm:    { emoji:'❄️', en:'Ice (hidden!)',zh:'隱藏！冰霜型態' }
+  };
+
+  var TOTAL_ROUNDS = 12;
+
+  /* ---- what the monster asks for each round ---- */
+  var ORDER_TEMPLATES = [
+    "I'm hungry! Something {w}, please!",
+    "I want something {w} today!",
+    "Can I have something {w}?",
+    "Give me something {w}, please!",
+    "I'm looking for something {w}!",
+    "Something {w} sounds good right now!"
+  ];
+  var MATCH_TAGS    = ['Yes!','Perfect!','You got it!','Just right!'];
+  var MISMATCH_TAGS = ['Oh well.','Hmm, okay.','Not quite, but thanks!','Different, but fine!'];
+
+  /* ======================= STATE ======================= */
+
+  var state = {
+    playerName: '',
+    monsterName: '',
+    eggId: null,
+    baseColor: '#FF8A4C',
+    shape: 'round',
+    splitColor: '#4FC3E8',
+    round: 0,
+    fedWords: [],
+    flags: {},
+    locked: false,
+    currentCards: [],
+    orderWord: null,
+    tempExpr: null,
+    ordersCorrect: 0,
+    litterVisits: 0
+  };
+
+  /* ======================= HELPERS ======================= */
+
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  /* one of the 3 cards each round is nudged toward the category the
+     monster has already eaten the most of, so a visible feature
+     (not just one lucky draw) is reachable within the game */
+  function leadingCategoryWord(fed){
+    var best = null, bestN = 0;
+    GROWTH_CATEGORIES.forEach(function(cat){
+      var n = 0;
+      for(var i=0;i<fed.length;i++){ if(cat.words.indexOf(fed[i]) >= 0) n++; }
+      if(n > bestN){ bestN = n; best = cat; }
+    });
+    return best ? pick(best.words) : null;
+  }
+
+  function pickRoundWords(fed){
+    var nudge = fed.length > 0 ? leadingCategoryWord(fed) : null;
+    var pool = WORD_LIST.slice();
+    var words = [];
+    if(nudge){
+      words.push(nudge);
+      pool = pool.filter(function(w){ return w !== nudge; });
+    }
+    for(var i=pool.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t = pool[i]; pool[i]=pool[j]; pool[j]=t;
+    }
+    while(words.length < 3 && pool.length){ words.push(pool.shift()); }
+    for(var k=words.length-1;k>0;k--){
+      var j2 = Math.floor(Math.random()*(k+1));
+      var t2 = words[k]; words[k]=words[j2]; words[j2]=t2;
+    }
+    return words;
+  }
+
+  /* the monster always asks for one of the 3 drawn cards, so the word is
+     always reachable — the task is reading which card matches, not luck.
+     A mismatch can still happen (and still gets its own gentle reaction)
+     if the player drags a different card on purpose. */
+  function pickOrderWord(cards){
+    return pick(cards);
+  }
+
+  function hexToRgb(hex){
+    hex = hex.replace('#','');
+    if(hex.length===3){ hex = hex.split('').map(function(c){return c+c;}).join(''); }
+    var num = parseInt(hex,16);
+    return { r:(num>>16)&255, g:(num>>8)&255, b:num&255 };
+  }
+  function rgbToHex(r,g,b){
+    function h(v){ v=Math.max(0,Math.min(255,Math.round(v))); var s=v.toString(16); return s.length===1?'0'+s:s; }
+    return '#'+h(r)+h(g)+h(b);
+  }
+  function mix(hexA, hexB, weight){
+    var c1=hexToRgb(hexA), c2=hexToRgb(hexB);
+    return rgbToHex(
+      c1.r*(1-weight)+c2.r*weight,
+      c1.g*(1-weight)+c2.g*weight,
+      c1.b*(1-weight)+c2.b*weight
+    );
+  }
+
+  function el(id){ return document.getElementById(id); }
+
+  function showScreen(id){
+    var screens = document.querySelectorAll('.screen');
+    for(var i=0;i<screens.length;i++){ screens[i].classList.remove('active'); }
+    el(id).classList.add('active');
+  }
+
+  /* ======================= MONSTER SVG — PARTS LIBRARY ======================= */
+  /* Rewritten drawing layer. Everything below builds small SVG string
+     fragments that get assembled per-monster in buildMonsterInner(). */
+
+  /* ---- bodies (combo / egg shapes — unchanged mapping from v1) ---- */
+  function bodyRound(color){
+    return '<ellipse cx="150" cy="165" rx="95" ry="85" fill="'+color+'" stroke="#2B2B2B" stroke-width="5"/>';
+  }
+  function bodySpiky(color){
+    var body = '<ellipse cx="150" cy="170" rx="92" ry="80" fill="'+color+'" stroke="#2B2B2B" stroke-width="5"/>';
+    var bumps = '';
+    var pos = [[95,100],[150,80],[205,100]];
+    for(var i=0;i<pos.length;i++){
+      var p = pos[i];
+      bumps += '<polygon points="'+(p[0]-16)+','+(p[1]+10)+' '+p[0]+','+(p[1]-20)+' '+(p[0]+16)+','+(p[1]+10)+'" fill="'+color+'" stroke="#2B2B2B" stroke-width="5" stroke-linejoin="round"/>';
+    }
+    return body + bumps;
+  }
+  function bodyBlocky(color){
+    return '<rect x="62" y="92" width="176" height="156" rx="30" fill="'+color+'" stroke="#2B2B2B" stroke-width="5"/>';
+  }
+  function bodySlime(color){
+    return '<path d="M60,170 Q55,80 150,78 Q245,80 240,170 Q238,215 205,222 Q230,236 205,246 Q185,230 165,240 Q150,232 135,240 Q115,230 95,246 Q70,236 95,222 Q62,215 60,170 Z" fill="'+color+'" stroke="#2B2B2B" stroke-width="5" stroke-linejoin="round"/>' +
+           '<ellipse cx="118" cy="118" rx="20" ry="12" fill="#ffffff" opacity="0.35"/>';
+  }
+  function bodyBubble(color){
+    return '<circle cx="150" cy="160" r="88" fill="'+color+'" stroke="#2B2B2B" stroke-width="5"/>';
+  }
+  function bubbleFloaters(color){
+    return '<circle cx="55" cy="95" r="10" fill="'+color+'" opacity="0.45"/>' +
+           '<circle cx="248" cy="112" r="14" fill="'+color+'" opacity="0.4"/>' +
+           '<circle cx="232" cy="235" r="8" fill="'+color+'" opacity="0.45"/>';
+  }
+  function bodySplitHalves(colorA, colorB){
+    return '<path d="M150,85 A95,85 0 0,0 150,255 Z" fill="'+colorA+'" stroke="#2B2B2B" stroke-width="5" stroke-linejoin="round"/>' +
+           '<path d="M150,85 A95,85 0 0,1 150,255 Z" fill="'+colorB+'" stroke="#2B2B2B" stroke-width="5" stroke-linejoin="round"/>' +
+           '<path d="M150,85 Q140,110 158,130 Q138,150 160,170 Q140,190 158,215 Q142,235 150,255" fill="none" stroke="#2B2B2B" stroke-width="5" stroke-linecap="round"/>';
+  }
+
+  /* ---- tail ---- */
+  function tailShape(color){
+    return '<path d="M230,212 Q272,222 260,254 Q244,238 226,232 Z" fill="'+color+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>';
+  }
+  function tailShapeLong(color){
+    return '<path d="M228,210 Q298,210 288,258 Q272,270 252,250 Q238,236 222,230 Z" fill="'+color+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>';
+  }
+
+  /* ---- mouth library (>=5 shapes) ---- */
+  function mouthSmile(){
+    return '<path d="M128,198 Q150,214 172,198" fill="none" stroke="#2B2B2B" stroke-width="5" stroke-linecap="round"/>';
+  }
+  function mouthFlat(){
+    return '<line x1="132" y1="202" x2="168" y2="202" stroke="#2B2B2B" stroke-width="5" stroke-linecap="round"/>';
+  }
+  function mouthTongue(){
+    return '<path d="M128,198 Q150,214 172,198" fill="none" stroke="#2B2B2B" stroke-width="5" stroke-linecap="round"/>' +
+           '<path d="M140,206 Q150,222 160,206 Z" fill="#FF6B7A" stroke="#2B2B2B" stroke-width="3" stroke-linejoin="round"/>';
+  }
+  function mouthO(){
+    return '<circle cx="150" cy="204" r="9" fill="#B5473A" stroke="#2B2B2B" stroke-width="4"/>';
+  }
+  function mouthOpenShape(level){
+    if(level===2){
+      return '<ellipse cx="150" cy="203" rx="18" ry="14" fill="#B5473A" stroke="#2B2B2B" stroke-width="4"/>';
+    }
+    return '<path d="M126,196 Q150,220 174,196 Q150,208 126,196 Z" fill="#B5473A" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>';
+  }
+  function mouthPucker(level){
+    if(level===2){
+      return '<path d="M140,206 Q150,198 160,206 Q150,202 140,206 Z" fill="#2B2B2B"/>' +
+             '<line x1="138" y1="190" x2="142" y2="196" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round"/>' +
+             '<line x1="162" y1="190" x2="158" y2="196" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round"/>';
+    }
+    return '<path d="M138,204 Q150,197 162,204 Q150,201 138,204 Z" fill="#2B2B2B"/>';
+  }
+
+  var MOUTH_FN = { smile:mouthSmile, flat:mouthFlat, tongue:mouthTongue, o:mouthO, open:function(){ return mouthOpenShape(1); } };
+
+  /* ---- eye library (>=5 shapes) ---- */
+  function eyesNormal(){
+    return '<circle cx="121" cy="150" r="18" fill="#fff" stroke="#2B2B2B" stroke-width="3"/>' +
+           '<circle cx="179" cy="150" r="18" fill="#fff" stroke="#2B2B2B" stroke-width="3"/>' +
+           '<circle cx="125" cy="152" r="7" fill="#2B2B2B"/>' +
+           '<circle cx="183" cy="152" r="7" fill="#2B2B2B"/>';
+  }
+  function eyesHappy(){
+    return '<path d="M103,148 Q121,132 139,148" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>' +
+           '<path d="M161,148 Q179,132 197,148" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>';
+  }
+  function eyesSquint(){
+    return '<line x1="106" y1="150" x2="136" y2="150" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>' +
+           '<line x1="164" y1="150" x2="194" y2="150" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>';
+  }
+  function eyesWide(){
+    return '<circle cx="121" cy="148" r="22" fill="#fff" stroke="#2B2B2B" stroke-width="3"/>' +
+           '<circle cx="179" cy="148" r="22" fill="#fff" stroke="#2B2B2B" stroke-width="3"/>' +
+           '<circle cx="121" cy="150" r="10" fill="#2B2B2B"/>' +
+           '<circle cx="179" cy="150" r="10" fill="#2B2B2B"/>' +
+           '<circle cx="124" cy="146" r="3" fill="#fff"/>' +
+           '<circle cx="182" cy="146" r="3" fill="#fff"/>';
+  }
+  function eyesHalf(){
+    return '<path d="M103,144 Q121,156 139,144 L139,152 Q121,162 103,152 Z" fill="#2B2B2B" opacity="0.75"/>' +
+           '<path d="M161,144 Q179,156 197,144 L197,152 Q179,162 161,152 Z" fill="#2B2B2B" opacity="0.75"/>' +
+           '<circle cx="121" cy="151" r="5" fill="#fff"/><circle cx="179" cy="151" r="5" fill="#fff"/>';
+  }
+  function eyesAngry(){
+    return eyesNormal() +
+           '<line x1="103" y1="126" x2="136" y2="138" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>' +
+           '<line x1="197" y1="126" x2="164" y2="138" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>';
+  }
+  function eyesSleepy(){
+    return '<path d="M103,150 Q121,164 139,150" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>' +
+           '<path d="M161,150 Q179,164 197,150" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>' +
+           '<text x="208" y="80" font-size="24" fill="#2B2B2B" font-family="sans-serif" font-weight="700">Zzz</text>';
+  }
+  var EYE_FN = { normal:eyesNormal, happy:eyesHappy, squint:eyesSquint, wide:eyesWide, half:eyesHalf };
+
+  /* blink eyelid, drawn after whichever eyes are showing */
+  function eyelidMarkup(color){
+    /* hidden via an INLINE style, not just the .eyelid CSS class: the
+       saved/exported PNG renders this SVG standalone (no page stylesheet),
+       so without an inline default these ellipses would stay full-size
+       and opaque, covering the eyes. The live page's .eyelid.blink
+       animation still overrides this while a blink is actually playing. */
+    var hide = 'style="transform:scaleY(0); transform-origin:center; transform-box:fill-box;"';
+    return '<ellipse class="eyelid" '+hide+' cx="121" cy="150" rx="19" ry="20" fill="'+color+'" stroke="#2B2B2B" stroke-width="2"/>' +
+           '<ellipse class="eyelid" '+hide+' cx="179" cy="150" rx="19" ry="20" fill="'+color+'" stroke="#2B2B2B" stroke-width="2"/>';
+  }
+
+  /* ---- what each food briefly makes the face do (reaction expression) ---- */
+  var EXPRESSION_MAP = {
+    hot:    { eyes:'wide',   mouth:'o' },
+    cold:   { eyes:'squint', mouth:'flat' },
+    sweet:  { eyes:'happy',  mouth:'smile' },
+    sour:   { eyes:'squint', mouth:'flat' },
+    big:    { eyes:'wide',   mouth:'open' },
+    small:  { eyes:'happy',  mouth:'o' },
+    long:   { eyes:'normal', mouth:'open' },
+    round:  { eyes:'happy',  mouth:'smile' },
+    soft:   { eyes:'half',   mouth:'smile' },
+    hard:   { eyes:'squint', mouth:'flat' },
+    fast:   { eyes:'wide',   mouth:'open' },
+    slow:   { eyes:'half',   mouth:'flat' },
+    red:    { eyes:'wide',   mouth:'smile' },
+    blue:   { eyes:'half',   mouth:'flat' },
+    green:  { eyes:'happy',  mouth:'tongue' },
+    sleepy: { eyes:'half',   mouth:'flat' },
+    angry:  { eyes:'squint', mouth:'flat' },
+    hungry: { eyes:'wide',   mouth:'open' }
+  };
+
+  /* ---- horns / fins (combo + egg-shape — unchanged) ---- */
+  function hornsSmall(color){
+    return '<polygon points="118,96 108,58 132,86" fill="'+color+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>' +
+           '<polygon points="182,96 192,58 168,86" fill="'+color+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>';
+  }
+  function hornsSpiky(color){
+    return '<polygon points="108,100 90,46 126,88" fill="'+color+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>' +
+           '<polygon points="150,90 150,36 172,80" fill="'+color+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>' +
+           '<polygon points="192,100 210,46 174,88" fill="'+color+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>';
+  }
+  function flameHorn(){
+    return '<path d="M150,92 Q126,58 150,24 Q174,58 150,92 Z" fill="#FF5A36" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>' +
+           '<path d="M150,80 Q138,60 150,40 Q162,60 150,80 Z" fill="#FFC93C"/>';
+  }
+  function wingsMarkup(color){
+    return '<path d="M60,158 Q6,114 18,182 Q34,214 72,196 Z" fill="'+color+'" opacity="0.85" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>' +
+           '<path d="M240,158 Q294,114 282,182 Q266,214 228,196 Z" fill="'+color+'" opacity="0.85" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>';
+  }
+  function iceCrystals(){
+    return '<polygon points="108,96 117,68 126,96" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>' +
+           '<polygon points="150,90 159,60 168,90" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>' +
+           '<polygon points="184,96 193,68 202,96" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>';
+  }
+  function frostOverlay(){
+    return '<ellipse cx="150" cy="165" rx="95" ry="85" fill="#CFF5FF" opacity="0.22"/>';
+  }
+  var gradCounter = 0;
+  function rainbowStripe(){
+    gradCounter++;
+    var gid = 'rbGrad' + gradCounter;
+    return '<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="1" y2="0">' +
+           '<stop offset="0%" stop-color="#FF6B4A"/><stop offset="25%" stop-color="#FFC93C"/>' +
+           '<stop offset="50%" stop-color="#2BB3A3"/><stop offset="75%" stop-color="#4F8EF7"/>' +
+           '<stop offset="100%" stop-color="#8B5CF6"/></linearGradient></defs>' +
+           '<rect x="52" y="152" width="196" height="26" rx="13" fill="url(#'+gid+')" opacity="0.8"/>';
+  }
+  function lavaCracks(){
+    return '<path d="M118,142 L128,162 L113,177" fill="none" stroke="#FF5A36" stroke-width="4" stroke-linecap="round"/>' +
+           '<path d="M192,150 L180,168 L197,180" fill="none" stroke="#FF5A36" stroke-width="4" stroke-linecap="round"/>';
+  }
+
+  /* ======================= GROWTH: overall size by total feeds ======================= */
+  /* Four visibly different stages so hatchling vs. end-game look like
+     different monsters, not just a bigger radius. */
+  function growthScale(count){
+    if(count<=2) return 0.66;
+    if(count<=5) return 0.86;
+    if(count<=8) return 1.08;
+    return 1.32;
+  }
+
+  /* generic, food-independent "getting older" marker: small back spikes
+     that appear partway through the game and grow bigger near the end,
+     so the comparison test (hatchling vs. result screen) always passes
+     even if a player's feeding was spread evenly across many words */
+  function spineRidgeMarkup(level){
+    if(level===2){
+      return '<polygon points="118,92 124,66 130,92" fill="#2B2B2B" opacity="0.85"/>' +
+             '<polygon points="142,84 148,56 154,84" fill="#2B2B2B" opacity="0.85"/>' +
+             '<polygon points="166,84 172,56 178,84" fill="#2B2B2B" opacity="0.85"/>' +
+             '<polygon points="190,92 196,66 202,92" fill="#2B2B2B" opacity="0.85"/>';
+    }
+    return '<polygon points="128,90 133,70 138,90" fill="#2B2B2B" opacity="0.7"/>' +
+           '<polygon points="162,90 167,70 172,90" fill="#2B2B2B" opacity="0.7"/>';
+  }
+
+  /* ======================= GROWTH: one real new part per food word ======================= */
+  /* Every one of the 18 words maps to a category below, so no card is a
+     dead draw. Level 1 shows after 2 feeds of that category, level 2
+     after 4 — and level 2 is a clearly bigger/different addition, not a
+     subtle re-tint. */
+  var GROWTH_CATEGORIES = [
+    { id:'warmCheeks',  words:['hot','red'] },
+    { id:'frostSpikes', words:['cold','blue'] },
+    { id:'furTufts',    words:['sweet','soft'] },
+    { id:'shellPlates', words:['hard'] },
+    { id:'roundPlump',  words:['round'] },
+    { id:'sourPucker',  words:['sour'] },
+    { id:'daintySmall', words:['small'] },
+    { id:'angryNub',    words:['angry'] },
+    { id:'sleepyDroop', words:['sleepy'] },
+    { id:'speedSwept',  words:['fast'] },
+    { id:'wideLong',    words:['big','long'] },
+    { id:'hungryMouth', words:['hungry'] },
+    { id:'slowDroopy',  words:['slow'] },
+    { id:'greenPatches',words:['green'] }
+  ];
+
+  function computeGrowthFeatures(s){
+    var fed = s.fedWords;
+    var active = [];
+    GROWTH_CATEGORIES.forEach(function(cat){
+      var n = 0;
+      for(var i=0;i<fed.length;i++){ if(cat.words.indexOf(fed[i]) >= 0) n++; }
+      if(n < 2) return;
+      if(cat.id === 'angryNub'    && s.flags.spikyHorns) return; /* combo already gives full angry horns */
+      if(cat.id === 'sleepyDroop' && s.flags.sleepyForm) return; /* combo already gives full closed eyes */
+      active.push({ id: cat.id, count: n, level: n >= 4 ? 2 : 1 });
+    });
+    active.sort(function(a,b){ return b.count - a.count; });
+    return active;
+  }
+
+  /* -- decorative part renderers (stack on top, order matters a little) -- */
+  function warmCheeksMarkup(level){
+    if(level===2){
+      return '<path d="M96,172 Q104,156 114,172 Q108,186 96,172 Z" fill="#FF6B4A" opacity="0.85"/>' +
+             '<path d="M186,172 Q194,156 204,172 Q198,186 186,172 Z" fill="#FF6B4A" opacity="0.85"/>' +
+             '<circle cx="104" cy="152" r="3" fill="#FFC93C"/><circle cx="196" cy="152" r="3" fill="#FFC93C"/>';
+    }
+    return '<path d="M100,174 Q106,162 113,174 Q108,184 100,174 Z" fill="#FF6B4A" opacity="0.6"/>' +
+           '<path d="M187,174 Q193,162 200,174 Q195,184 187,174 Z" fill="#FF6B4A" opacity="0.6"/>';
+  }
+  function frostSpikesMarkup(level){
+    if(level===2){
+      return '<polygon points="90,108 98,78 106,108" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>' +
+             '<polygon points="108,104 114,82 120,104" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>' +
+             '<polygon points="180,104 186,82 192,104" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>' +
+             '<polygon points="194,108 202,78 210,108" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>';
+    }
+    return '<polygon points="95,110 102,88 109,110" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>' +
+           '<polygon points="191,110 198,88 205,110" fill="#CFF5FF" stroke="#2B6F9F" stroke-width="3"/>';
+  }
+  function furTuftsMarkup(level){
+    var n = level===2 ? 6 : 3;
+    var xs = [78,100,122,178,200,222];
+    var out = '';
+    for(var i=0;i<n;i++){
+      var x = xs[i], y = 240 + ((i%2)*6);
+      out += '<polygon points="'+(x-8)+','+y+' '+x+','+(y-16)+' '+(x+8)+','+y+'" fill="#fff" stroke="#2B2B2B" stroke-width="3" stroke-linejoin="round"/>';
+    }
+    return out;
+  }
+  function shellPlatesMarkup(level, color){
+    var shellColor = mix(color,'#5B4636',0.25);
+    if(level===2){
+      return '<path d="M170,105 Q228,95 232,150 Q222,165 178,154 Q160,128 170,105 Z" fill="'+shellColor+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>' +
+             '<line x1="186" y1="112" x2="192" y2="150" stroke="#2B2B2B" stroke-width="2"/>' +
+             '<line x1="204" y1="108" x2="208" y2="150" stroke="#2B2B2B" stroke-width="2"/>' +
+             '<polygon points="196,96 202,80 209,98" fill="'+shellColor+'" stroke="#2B2B2B" stroke-width="3"/>';
+    }
+    return '<path d="M172,112 Q212,106 216,148 Q206,158 180,150 Q166,132 172,112 Z" fill="'+shellColor+'" stroke="#2B2B2B" stroke-width="4" stroke-linejoin="round"/>' +
+           '<line x1="190" y1="118" x2="194" y2="146" stroke="#2B2B2B" stroke-width="2"/>';
+  }
+  function roundPlumpMarkup(level){
+    var r = level===2 ? 16 : 11;
+    return '<circle cx="106" cy="182" r="'+r+'" fill="#FFC2B0" opacity="0.5"/>' +
+           '<circle cx="194" cy="182" r="'+r+'" fill="#FFC2B0" opacity="0.5"/>';
+  }
+  function angryBrowMarkup(level){
+    var w = level===2 ? 7 : 5;
+    var out = '<line x1="104" y1="124" x2="134" y2="134" stroke="#2B2B2B" stroke-width="'+w+'" stroke-linecap="round"/>' +
+               '<line x1="196" y1="124" x2="166" y2="134" stroke="#2B2B2B" stroke-width="'+w+'" stroke-linecap="round"/>';
+    if(level===2){
+      out += '<polygon points="122,100 116,76 134,94" fill="#8C97A8" stroke="#2B2B2B" stroke-width="3" stroke-linejoin="round"/>' +
+             '<polygon points="178,100 184,76 166,94" fill="#8C97A8" stroke="#2B2B2B" stroke-width="3" stroke-linejoin="round"/>';
+    }
+    return out;
+  }
+  function sleepyDroopMarkup(level){
+    var out = '<path d="M103,150 Q121,164 139,150" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round" opacity="0.7"/>' +
+               '<path d="M161,150 Q179,164 197,150" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round" opacity="0.7"/>';
+    if(level===2){
+      out += '<circle cx="213" cy="90" r="5" fill="#fff" stroke="#2B2B2B" stroke-width="2"/>' +
+             '<circle cx="226" cy="72" r="8" fill="#fff" stroke="#2B2B2B" stroke-width="2"/>' +
+             '<text x="220" y="76" font-size="11" fill="#2B2B2B" font-family="sans-serif" font-weight="700">z</text>';
+    }
+    return out;
+  }
+  function speedSweptMarkup(level, color){
+    var lines = [
+      '<path d="M48,140 L24,132" stroke="#2B2B2B" stroke-width="3" stroke-linecap="round" opacity="0.6"/>',
+      '<path d="M48,156 L20,154" stroke="#2B2B2B" stroke-width="3" stroke-linecap="round" opacity="0.6"/>',
+      '<path d="M48,172 L24,178" stroke="#2B2B2B" stroke-width="3" stroke-linecap="round" opacity="0.6"/>'
+    ].slice(0, level===2 ? 3 : 2).join('');
+    if(level===2){
+      lines += '<path d="M86,106 Q58,92 70,126 Q82,120 92,114 Z" fill="'+color+'" stroke="#2B2B2B" stroke-width="3" stroke-linejoin="round"/>';
+    }
+    return lines;
+  }
+  function greenPatchesMarkup(level){
+    if(level===2){
+      return '<ellipse cx="112" cy="196" rx="10" ry="7" fill="#4CAF50" opacity="0.55"/>' +
+             '<ellipse cx="188" cy="192" rx="9" ry="6" fill="#4CAF50" opacity="0.55"/>' +
+             '<ellipse cx="150" cy="208" rx="8" ry="6" fill="#4CAF50" opacity="0.5"/>' +
+             '<path d="M150,72 Q140,50 150,30 Q160,50 150,72 Z" fill="#4CAF50" stroke="#2B2B2B" stroke-width="3" stroke-linejoin="round"/>';
+    }
+    return '<ellipse cx="116" cy="194" rx="7" ry="5" fill="#4CAF50" opacity="0.5"/>' +
+           '<ellipse cx="184" cy="190" rx="6" ry="4" fill="#4CAF50" opacity="0.5"/>';
+  }
+  function daintySparkleMarkup(level){
+    var n = level===2 ? 3 : 1;
+    var pts = [[70,100],[232,96],[150,40]];
+    var out = '';
+    for(var i=0;i<n;i++){
+      var p = pts[i];
+      out += '<polygon points="'+p[0]+','+(p[1]-7)+' '+(p[0]+3)+','+p[1]+' '+(p[0]+7)+','+p[1]+' '+(p[0]+3)+','+(p[1]+3)+' '+p[0]+','+(p[1]+7)+' '+(p[0]-3)+','+(p[1]+3)+' '+(p[0]-7)+','+p[1]+' '+(p[0]-3)+','+p[1]+'" fill="#FFD23F" stroke="#2B2B2B" stroke-width="2" stroke-linejoin="round"/>';
+    }
+    return out;
+  }
+  function thirdEyeMarkup(){
+    return '<circle cx="150" cy="108" r="13" fill="#fff" stroke="#2B2B2B" stroke-width="3"/><circle cx="150" cy="110" r="6" fill="#2B2B2B"/>';
+  }
+  function stubLegsMarkup(color){
+    return '<ellipse cx="118" cy="246" rx="15" ry="9" fill="'+color+'" stroke="#2B2B2B" stroke-width="4"/>' +
+           '<ellipse cx="182" cy="246" rx="15" ry="9" fill="'+color+'" stroke="#2B2B2B" stroke-width="4"/>';
+  }
+
+  var STICKER_ORDER = ['warmCheeks','frostSpikes','furTufts','shellPlates','angryNub','sleepyDroop','speedSwept','greenPatches','roundPlump','daintySmall'];
+  var STICKER_FN = {
+    warmCheeks:  function(level){ return warmCheeksMarkup(level); },
+    frostSpikes: function(level){ return frostSpikesMarkup(level); },
+    furTufts:    function(level){ return furTuftsMarkup(level); },
+    shellPlates: function(level,color){ return shellPlatesMarkup(level,color); },
+    angryNub:    function(level){ return angryBrowMarkup(level); },
+    sleepyDroop: function(level){ return sleepyDroopMarkup(level); },
+    speedSwept:  function(level,color){ return speedSweptMarkup(level,color); },
+    greenPatches:function(level){ return greenPatchesMarkup(level); },
+    roundPlump:  function(level){ return roundPlumpMarkup(level); },
+    daintySmall: function(level){ return daintySparkleMarkup(level); }
+  };
+
+  /* ======================= BUILD ONE MONSTER ======================= */
+
+  function buildMonsterInner(s){
+    var body;
+    if(s.flags.slime){
+      body = bodySlime(mix(s.baseColor,'#ffffff',0.3));
+    } else if(s.flags.halfSplit){
+      body = bodySplitHalves(s.baseColor, s.splitColor);
+    } else if(s.flags.bubbleForm){
+      body = bodyBubble(s.baseColor) + bubbleFloaters(s.baseColor);
+    } else if(s.shape === 'spiky'){
+      body = bodySpiky(s.baseColor);
+    } else if(s.shape === 'blocky'){
+      body = bodyBlocky(s.baseColor);
+    } else {
+      body = bodyRound(s.baseColor);
+    }
+
+    var fed = s.fedWords;
+    var count = fed.length;
+    var features = computeGrowthFeatures(s);
+    var levels = {};
+    features.forEach(function(f){ levels[f.id] = f.level; });
+
+    var wideLevel  = levels.wideLong    || 0;
+    var mouthLevel = levels.hungryMouth || 0;
+    var sourLevel  = levels.sourPucker  || 0;
+    var smallLevel = levels.daintySmall || 0;
+    var roundLevel = levels.roundPlump  || 0;
+    var slowLevel  = levels.slowDroopy  || 0;
+
+    var tail = (wideLevel >= 2) ? tailShapeLong(s.baseColor) : tailShape(s.baseColor);
+    var fins = s.flags.wings ? wingsMarkup(mix(s.baseColor,'#ffffff',0.4)) : '';
+
+    var horns = '';
+    if(s.flags.volcano){ horns = flameHorn(); }
+    else if(s.flags.spikyHorns){ horns = hornsSpiky(s.baseColor); }
+    else if(s.eggId === 'noisy'){ horns = hornsSmall(s.baseColor); }
+
+    var eyes;
+    if(s.flags.sleepyForm){ eyes = eyesSleepy(); }
+    else if(s.flags.spikyHorns){ eyes = eyesAngry(); }
+    else if(s.tempExpr && s.round <= s.tempExpr.until){ eyes = (EYE_FN[s.tempExpr.eyes] || eyesNormal)(); }
+    else { eyes = eyesNormal(); }
+    eyes += eyelidMarkup(s.baseColor);
+
+    var mouth;
+    if(mouthLevel){ mouth = mouthOpenShape(mouthLevel); }
+    else if(sourLevel){ mouth = mouthPucker(sourLevel); }
+    else if(s.tempExpr && s.round <= s.tempExpr.until){ mouth = (MOUTH_FN[s.tempExpr.mouth] || mouthSmile)(); }
+    else { mouth = mouthSmile(); }
+
+    var overlay = '';
+    if(s.flags.iceForm){ overlay += frostOverlay() + iceCrystals(); }
+    if(s.flags.rainbow){ overlay += rainbowStripe(); }
+    if(s.flags.volcano){ overlay += lavaCracks(); }
+    if(mouthLevel >= 2){ overlay += thirdEyeMarkup(); }
+    if(slowLevel >= 2){ overlay += stubLegsMarkup(s.baseColor); }
+    if(count >= 9){ overlay += spineRidgeMarkup(2); }
+    else if(count >= 5){ overlay += spineRidgeMarkup(1); }
+
+    var stickers = '';
+    STICKER_ORDER.forEach(function(id){
+      var f = null;
+      for(var i=0;i<features.length;i++){ if(features[i].id === id){ f = features[i]; break; } }
+      if(!f) return;
+      stickers += STICKER_FN[id](f.level, s.baseColor);
+    });
+
+    var content = body + tail + fins + horns + eyes + mouth + overlay + stickers;
+
+    var scale = growthScale(count);
+    if(smallLevel){ scale *= (smallLevel===2 ? 0.82 : 0.9); }
+    if(roundLevel){ scale *= (roundLevel===2 ? 1.18 : 1.08); }
+    var widthScale = 1 + wideLevel * 0.07;
+    var postureY = slowLevel ? (slowLevel===2 ? 0.9 : 0.95) : 1;
+
+    /* outer <g>: positioning (inline transform attr).
+       middle <g class="tilt">: idle head-tilt, driven purely by CSS so it
+       never fights the inline transform attr on the same element.
+       inner <g>: per-monster width/posture squash from growth. */
+    return '<g transform="translate(150,170) scale('+scale+') translate(-150,-170)">' +
+             '<g class="tilt">' +
+               '<g transform="translate(150,170) scale('+widthScale+','+postureY+') translate(-150,-170)">' + content + '</g>' +
+             '</g>' +
+           '</g>';
+  }
+
+  function buildMonsterSVG(s){
+    var inner = buildMonsterInner(s);
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">' + inner + '</svg>';
+  }
+
+  function renderMonsterInto(container, s, animate){
+    var cls = animate ? 'monster-box pop' : 'monster-box';
+    if(s.flags.twinSplit){
+      container.innerHTML =
+        '<div class="twin-box">' +
+          '<div class="'+cls+'">'+buildMonsterSVG(s)+'</div>' +
+          '<div class="'+cls+'">'+buildMonsterSVG(s)+'</div>' +
+        '</div>';
+    } else {
+      container.innerHTML = '<div class="'+cls+'">'+buildMonsterSVG(s)+'</div>';
+    }
+  }
+
+  /* ======================= EGG SVG (small preview) ======================= */
+
+  function eggSVG(egg){
+    var shape;
+    if(egg.shape === 'spiky'){
+      shape = '<ellipse cx="60" cy="72" rx="42" ry="50" fill="'+egg.color+'" stroke="#2B2B2B" stroke-width="4"/>' +
+              '<polygon points="40,36 48,14 58,36" fill="'+egg.color+'" stroke="#2B2B2B" stroke-width="3" stroke-linejoin="round"/>' +
+              '<polygon points="62,30 70,10 78,32" fill="'+egg.color+'" stroke="#2B2B2B" stroke-width="3" stroke-linejoin="round"/>';
+    } else if(egg.shape === 'blocky'){
+      shape = '<rect x="22" y="26" width="76" height="92" rx="24" fill="'+egg.color+'" stroke="#2B2B2B" stroke-width="4"/>';
+    } else {
+      shape = '<ellipse cx="60" cy="70" rx="44" ry="54" fill="'+egg.color+'" stroke="#2B2B2B" stroke-width="4"/>';
+    }
+    return '<svg viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg">' + shape + '</svg>';
+  }
+
+  /* ======================= SCREEN 1: NAME ======================= */
+
+  el('toEggBtn').addEventListener('click', function(){
+    state.playerName = el('playerNameInput').value.trim();
+    state.monsterName = el('monsterNameInput').value.trim();
+    renderEggScreen();
+    showScreen('eggScreen');
+  });
+
+  /* ======================= SCREEN 2: EGG ======================= */
+
+  function renderEggScreen(){
+    var grid = el('eggGrid');
+    grid.innerHTML = '';
+    EGGS.forEach(function(egg){
+      var card = document.createElement('div');
+      card.className = 'egg-card';
+      card.innerHTML = eggSVG(egg) + '<div class="hint">"'+egg.hint+'"</div>';
+      card.addEventListener('click', function(){ chooseEgg(egg, card); });
+      grid.appendChild(card);
+    });
+  }
+
+  function chooseEgg(egg, cardEl){
+    var all = document.querySelectorAll('.egg-card');
+    for(var i=0;i<all.length;i++){ all[i].classList.remove('chosen'); }
+    cardEl.classList.add('chosen');
+
+    state.eggId = egg.id;
+    state.baseColor = egg.color;
+    state.shape = egg.shape;
+
+    setTimeout(function(){
+      showScreen('feedScreen');
+      startFeedRound();
+    }, 650);
+  }
+
+  /* ======================= SCREEN 3: FEED ======================= */
+
+  function renderProgressDots(){
+    var wrap = el('progressDots');
+    wrap.innerHTML = '';
+    for(var i=1;i<=TOTAL_ROUNDS;i++){
+      var d = document.createElement('div');
+      d.className = 'dot' + (i < state.round ? ' done' : (i === state.round ? ' now' : ''));
+      wrap.appendChild(d);
+    }
+  }
+
+  function renderOrder(){
+    var tpl = pick(ORDER_TEMPLATES);
+    var word = state.orderWord;
+    var zh = FOODS[word].zh;
+    var html = tpl.replace('{w}', '<ruby>'+word+'<rt>'+zh+'</rt></ruby>');
+    el('orderBubble').innerHTML = html;
+  }
+
+  function startFeedRound(){
+    state.round++;
+    state.locked = false;
+    state.currentCards = pickRoundWords(state.fedWords);
+    state.orderWord = pickOrderWord(state.currentCards);
+    renderFeedScreen();
+  }
+
+  function renderFeedScreen(){
+    renderProgressDots();
+    renderOrder();
+
+    var stageMonster = document.createElement('div');
+    renderMonsterInto(stageMonster, state);
+
+    var monsterStage = el('monsterStage');
+    monsterStage.innerHTML = '';
+    monsterStage.appendChild(stageMonster.firstChild);
+
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.id = 'speechBubble';
+    el('monsterStage').style.position = 'relative';
+    el('monsterStage').appendChild(bubble);
+
+    var row = el('cardsRow');
+    row.innerHTML = '';
+    state.currentCards.forEach(function(word){
+      var food = FOODS[word];
+      var card = document.createElement('div');
+      card.className = 'food-card';
+      card.innerHTML = '<span class="emoji">'+food.emoji+'</span><span class="word">'+word+'</span>';
+      row.appendChild(card);
+      enableDrag(card, word);
+    });
+  }
+
+  function showBubble(text){
+    var b = el('speechBubble');
+    if(!b) return;
+    b.textContent = text;
+    b.classList.add('show');
+    setTimeout(function(){ b.classList.remove('show'); }, 1300);
+  }
+
+  function rectCenterInside(rect, target){
+    var cx = rect.left + rect.width/2;
+    var cy = rect.top + rect.height/2;
+    return cx >= target.left && cx <= target.right && cy >= target.top && cy <= target.bottom;
+  }
+
+  function enableDrag(cardEl, word){
+    cardEl.addEventListener('pointerdown', function(e){
+      if(state.locked) return;
+      e.preventDefault();
+
+      var startRect = cardEl.getBoundingClientRect();
+      var offsetX = e.clientX - startRect.left;
+      var offsetY = e.clientY - startRect.top;
+
+      var ghost = cardEl.cloneNode(true);
+      ghost.classList.add('dragging-ghost');
+      ghost.style.position = 'fixed';
+      ghost.style.left = startRect.left + 'px';
+      ghost.style.top = startRect.top + 'px';
+      ghost.style.width = startRect.width + 'px';
+      ghost.style.margin = '0';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.zIndex = '1000';
+      ghost.style.transform = 'scale(1.08) rotate(-2deg)';
+      document.body.appendChild(ghost);
+      cardEl.style.opacity = '0.25';
+
+      try{ cardEl.setPointerCapture(e.pointerId); }catch(err){}
+
+      function move(ev){
+        ghost.style.left = (ev.clientX - offsetX) + 'px';
+        ghost.style.top = (ev.clientY - offsetY) + 'px';
+        var plateRect = el('plateZone').getBoundingClientRect();
+        var over = rectCenterInside(ghost.getBoundingClientRect(), plateRect);
+        el('plateZone').classList.toggle('plate-hover', over);
+      }
+      function up(ev){
+        cardEl.removeEventListener('pointermove', move);
+        cardEl.removeEventListener('pointerup', up);
+        cardEl.removeEventListener('pointercancel', up);
+        try{ cardEl.releasePointerCapture(e.pointerId); }catch(err){}
+
+        var plateRect = el('plateZone').getBoundingClientRect();
+        var over = rectCenterInside(ghost.getBoundingClientRect(), plateRect);
+        el('plateZone').classList.remove('plate-hover');
+        ghost.remove();
+
+        if(over && !state.locked){
+          cardEl.remove();
+          feed(word);
+        } else {
+          cardEl.style.opacity = '1';
+        }
+      }
+      cardEl.addEventListener('pointermove', move);
+      cardEl.addEventListener('pointerup', up);
+      cardEl.addEventListener('pointercancel', up);
+    });
+  }
+
+  function feed(word){
+    state.locked = true;
+    state.fedWords.push(word);
+
+    var matched = (word === state.orderWord);
+    if(matched){ state.ordersCorrect++; }
+    var exprBase = EXPRESSION_MAP[word] || { eyes:'normal', mouth:'smile' };
+    state.tempExpr = { eyes: exprBase.eyes, mouth: exprBase.mouth, until: state.round + 2 };
+
+    var newlyUnlocked = checkCombos();
+
+    renderFeedScreen_MonsterOnly();
+
+    var tag = matched ? pick(MATCH_TAGS) : pick(MISMATCH_TAGS);
+    var msg = tag + ' ' + pick(FOODS[word].reactions);
+    showBubble(msg);
+
+    if(newlyUnlocked.length){
+      setTimeout(function(){
+        var m = FORMS_META[newlyUnlocked[0]];
+        showBubble(m.emoji + ' ' + m.en + '!');
+      }, 1400);
+    }
+
+    setTimeout(function(){
+      afterFeed();
+    }, newlyUnlocked.length ? 2700 : 1300);
+  }
+
+  function renderFeedScreen_MonsterOnly(){
+    var stageMonster = document.createElement('div');
+    renderMonsterInto(stageMonster, state, true);
+    var monsterStage = el('monsterStage');
+    var bubble = el('speechBubble');
+    monsterStage.innerHTML = '';
+    monsterStage.appendChild(stageMonster.firstChild);
+    if(bubble){ monsterStage.appendChild(bubble); }
+
+    var row = el('cardsRow');
+    row.innerHTML = '';
+  }
+
+  function checkCombos(){
+    var fed = state.fedWords;
+    var n = fed.length;
+    var last = fed[n-1];
+    var prev = fed[n-2];
+    var unlocked = [];
+
+    function pairIs(a,b){
+      if(n < 2) return false;
+      return (last===a && prev===b) || (last===b && prev===a);
+    }
+
+    if(pairIs('hot','hot') && !state.flags.volcano){ state.flags.volcano = true; unlocked.push('volcano'); }
+    if(pairIs('hot','cold') && !state.flags.halfSplit){ state.flags.halfSplit = true; unlocked.push('halfSplit'); }
+    if(pairIs('sweet','soft') && !state.flags.slime){ state.flags.slime = true; unlocked.push('slime'); }
+    if(pairIs('fast','fast') && !state.flags.wings){ state.flags.wings = true; unlocked.push('wings'); }
+    if(pairIs('big','big') && !state.flags.twinSplit){ state.flags.twinSplit = true; unlocked.push('twinSplit'); }
+    if(pairIs('round','round') && !state.flags.bubbleForm){ state.flags.bubbleForm = true; unlocked.push('bubbleForm'); }
+    if(pairIs('angry','angry') && !state.flags.spikyHorns){ state.flags.spikyHorns = true; unlocked.push('spikyHorns'); }
+    if(pairIs('sleepy','sleepy') && !state.flags.sleepyForm){ state.flags.sleepyForm = true; unlocked.push('sleepyForm'); }
+    if(pairIs('red','green') && !state.flags.rainbow){ state.flags.rainbow = true; unlocked.push('rainbow'); }
+
+    if(n >= 3 && !state.flags.iceForm){
+      var last3 = [fed[n-3], fed[n-2], fed[n-1]].slice().sort();
+      var target = ['blue','cold','slow'].slice().sort();
+      if(last3[0]===target[0] && last3[1]===target[1] && last3[2]===target[2]){
+        state.flags.iceForm = true;
+        unlocked.push('iceForm');
+      }
+    }
+    return unlocked;
+  }
+
+  function afterFeed(){
+    var r = state.round;
+    if(r % 3 === 0 && r !== TOTAL_ROUNDS){
+      showLitterBox();
+    } else if(r >= TOTAL_ROUNDS){
+      finishGame();
+    } else {
+      startFeedRound();
+    }
+  }
+
+  /* ======================= LITTER BOX (random count, random spots, timer from the 2nd time on) ======================= */
+
+  var LITTER_SLOTS = [
+    { left:'8%',  top:'14%' },
+    { left:'30%', top:'54%' },
+    { left:'52%', top:'18%' },
+    { left:'74%', top:'58%' },
+    { left:'18%', top:'74%' },
+    { left:'58%', top:'78%' },
+    { left:'84%', top:'24%' }
+  ];
+  var litterTimerInterval = null;
+
+  function showLitterBox(){
+    state.litterVisits++;
+    var box = el('litterBox');
+    box.innerHTML = '';
+
+    var n = 2 + Math.floor(Math.random()*4); /* 2-5 */
+    if(state.litterVisits >= 2){ n += 1 + Math.floor(Math.random()*2); } /* +1 or +2 once there's a timer, for more urgency */
+    n = Math.min(n, LITTER_SLOTS.length);
+    var slots = LITTER_SLOTS.slice();
+    for(var i=slots.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t = slots[i]; slots[i]=slots[j]; slots[j]=t;
+    }
+    slots = slots.slice(0, n);
+    var remaining = n;
+
+    var growthStage = growthScale(state.fedWords.length);
+    var poopSize = Math.round(26 + growthStage*14); /* bigger poop as the monster grows */
+
+    slots.forEach(function(pos){
+      var p = document.createElement('div');
+      p.className = 'poop';
+      p.textContent = '💩';
+      p.style.left = pos.left;
+      p.style.top = pos.top;
+      p.style.fontSize = poopSize + 'px';
+      p.style.transform = 'rotate(' + Math.round(Math.random()*30-15) + 'deg)';
+
+      p.addEventListener('click', function(){
+        if(p.classList.contains('gone')) return;
+        p.classList.add('gone');
+        remaining--;
+        if(remaining <= 0){
+          clearLitterTimer();
+          setTimeout(finishLitterBox, 350);
+        }
+      });
+      box.appendChild(p);
+    });
+
+    var timerEl = el('litterTimer');
+    if(state.litterVisits >= 2){
+      timerEl.style.display = 'block';
+      startLitterTimer(8);
+    } else {
+      timerEl.style.display = 'none';
+    }
+
+    el('litterOverlay').classList.add('show');
+  }
+
+  function startLitterTimer(seconds){
+    clearLitterTimer();
+    var t = seconds;
+    el('litterTimer').textContent = '⏱ ' + t + 's';
+    litterTimerInterval = setInterval(function(){
+      t--;
+      el('litterTimer').textContent = '⏱ ' + Math.max(t,0) + 's';
+      if(t <= 0){
+        clearLitterTimer();
+        /* no penalty — time's up just clears the rest for them */
+        var leftover = document.querySelectorAll('#litterBox .poop:not(.gone)');
+        leftover.forEach(function(p){ p.classList.add('gone'); });
+        setTimeout(finishLitterBox, 350);
+      }
+    }, 1000);
+  }
+  function clearLitterTimer(){
+    if(litterTimerInterval){ clearInterval(litterTimerInterval); litterTimerInterval = null; }
+  }
+
+  function finishLitterBox(){
+    clearLitterTimer();
+    el('litterOverlay').classList.remove('show');
+    startFeedRound();
+    setTimeout(function(){ showBubble(pick(LITTER_REACTIONS)); }, 150);
+  }
+
+  /* ======================= SCREEN 4: RESULT ======================= */
+
+  function finishGame(){
+    el('resultTitle').textContent = (state.monsterName || 'My Monster');
+
+    var stage = el('resultMonsterStage');
+    stage.innerHTML = '';
+    var holder = document.createElement('div');
+    renderMonsterInto(holder, state, true);
+    stage.appendChild(holder.firstChild);
+
+    el('orderScoreLine').textContent =
+      'You guessed what I wanted: ' + state.ordersCorrect + ' / ' + TOTAL_ROUNDS + ' times   你答對了 ' + state.ordersCorrect + ' 次';
+
+    var chips = el('wordChips');
+    chips.innerHTML = '';
+    state.fedWords.forEach(function(w){
+      var chip = document.createElement('div');
+      chip.className = 'word-chip';
+      chip.innerHTML = '<span class="en">'+w+'</span><span class="zh">'+FOODS[w].zh+'</span>';
+      chips.appendChild(chip);
+    });
+
+    var badges = el('formBadges');
+    badges.innerHTML = '';
+    var keys = Object.keys(state.flags).filter(function(k){ return state.flags[k]; });
+    if(keys.length === 0){
+      var none = document.createElement('div');
+      none.className = 'form-badge';
+      none.textContent = 'Just a happy monster 😊 普通的開心怪獸';
+      badges.appendChild(none);
+    } else {
+      keys.forEach(function(k){
+        var m = FORMS_META[k];
+        var b = document.createElement('div');
+        b.className = 'form-badge';
+        b.textContent = m.emoji + ' ' + m.en;
+        badges.appendChild(b);
+      });
+    }
+
+    showScreen('resultScreen');
+  }
+
+  el('restartBtn').addEventListener('click', function(){
+    state.eggId = null;
+    state.round = 0;
+    state.fedWords = [];
+    state.flags = {};
+    state.locked = false;
+    state.currentCards = [];
+    state.orderWord = null;
+    state.tempExpr = null;
+    state.ordersCorrect = 0;
+    state.litterVisits = 0;
+    el('playerNameInput').value = '';
+    el('monsterNameInput').value = '';
+    showScreen('nameScreen');
+  });
+
+  /* ======================= SAVE IMAGE ======================= */
+
+  function svgToImage(svgString){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      var blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      img.onload = function(){ resolve(img); URL.revokeObjectURL(url); };
+      img.onerror = function(err){ reject(err); };
+      img.src = url;
+    });
+  }
+
+  function zhOf(word){ return FOODS[word] ? FOODS[word].zh : ''; }
+
+  el('saveImgBtn').addEventListener('click', function(){
+    saveImage();
+  });
+
+  function saveImage(){
+    var canvas = document.createElement('canvas');
+    canvas.width = 900;
+    canvas.height = 1200;
+    var ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#FFF6E9';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.fillStyle = '#2B2B2B';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 50px sans-serif';
+    ctx.fillText(state.monsterName || 'My Monster', canvas.width/2, 80);
+    ctx.font = '26px sans-serif';
+    ctx.fillText((state.playerName || 'Friend') + "'s monster", canvas.width/2, 120);
+
+    var drawPromise;
+    if(state.flags.twinSplit){
+      drawPromise = svgToImage(buildMonsterSVG(state)).then(function(img){
+        ctx.drawImage(img, 130, 160, 300, 300);
+        ctx.drawImage(img, 470, 160, 300, 300);
+      });
+    } else {
+      drawPromise = svgToImage(buildMonsterSVG(state)).then(function(img){
+        ctx.drawImage(img, 200, 150, 500, 500);
+      });
+    }
+
+    drawPromise.then(function(){
+      var y = 700;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#2B2B2B';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText('You guessed what I wanted: ' + state.ordersCorrect + ' / ' + TOTAL_ROUNDS + '   你答對了 ' + state.ordersCorrect + ' 次', 60, y);
+      y += 50;
+
+      ctx.font = 'bold 30px sans-serif';
+      ctx.fillText('Words I fed   餵過的字', 60, y);
+      y += 44;
+
+      ctx.font = '22px sans-serif';
+      var x = 60;
+      state.fedWords.forEach(function(w){
+        var text = w + '  ' + zhOf(w);
+        var width = ctx.measureText(text).width + 28;
+        if(x + width > canvas.width - 60){ x = 60; y += 42; }
+        ctx.fillStyle = '#FFE8D6';
+        ctx.fillRect(x-8, y-26, width, 36);
+        ctx.fillStyle = '#2B2B2B';
+        ctx.fillText(text, x, y);
+        x += width + 10;
+      });
+
+      y += 64;
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillText('Forms unlocked   解鎖型態', 60, y);
+      y += 38;
+      ctx.font = '22px sans-serif';
+      var keys = Object.keys(state.flags).filter(function(k){ return state.flags[k]; });
+      if(keys.length === 0){
+        ctx.fillText('Just a happy monster 😊', 60, y);
+      } else {
+        keys.forEach(function(k){
+          var m = FORMS_META[k];
+          ctx.fillText(m.emoji + ' ' + m.en, 60, y);
+          y += 36;
+        });
+      }
+
+      var link = document.createElement('a');
+      link.download = (state.monsterName || 'monster') + '.png';
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+  }
+
+  /* ======================= IDLE: random blink every 3-5s ======================= */
+  /* breathing + head-tilt are pure CSS (see .monster-box svg and .tilt).
+     Blink needs real randomness, so it's driven from here; it re-queries
+     the DOM each time it fires, so it keeps working across re-renders
+     without needing to be restarted. */
+  function scheduleBlink(){
+    var delay = 3000 + Math.random()*2000;
+    setTimeout(function(){
+      var lids = document.querySelectorAll('.eyelid');
+      lids.forEach(function(l){
+        l.classList.remove('blink');
+        void l.offsetWidth; /* restart the animation even if it's mid-blink */
+        l.classList.add('blink');
+      });
+      scheduleBlink();
+    }, delay);
+  }
+
+  /* ======================= INIT ======================= */
+
+  showScreen('nameScreen');
+  scheduleBlink();
+
+})();
+</script>
+</body>
+</html>
